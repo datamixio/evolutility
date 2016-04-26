@@ -37,7 +37,7 @@ function fieldTypePanel(id, label, labelPanel, label2Panel, css){
             },
             {
                 id: id+'2',
-                attribute: id,
+                attribute: id+'1', // same col as prev field
                 readonly: true,
                 groupable: false,
                 colorable: false,
@@ -60,7 +60,7 @@ function fieldTypePanel(id, label, labelPanel, label2Panel, css){
         fields[1].css='cGreen';
         fields[2].css='cBlue';
     }else if(id==='list' || id==='lov'){
-        fields = _.each(fields, function(f){
+        fields.forEach(function(f){
             f.list=testLOV;
         });
     }else if(id==='hidden'){
@@ -130,6 +130,7 @@ uiModels.test = {
                     elements: [
                         {
                             id: 'lovicon1',
+                            attribute: 'lovicon1',
                             type: 'lov',
                             label: 'List',
                             list:testLOV2,
@@ -139,6 +140,7 @@ uiModels.test = {
                         },
                         {
                             id: 'lovicon2',
+                            attribute: 'lovicon1',
                             type: 'lov',
                             label: 'List 2',
                             readonly: true,
@@ -147,6 +149,7 @@ uiModels.test = {
                         },
                         {
                             id: 'lovicon3',
+                            attribute: 'lovicon3',
                             type: 'lov',
                             label: 'List 3',
                             list: testLOV2,

@@ -33,7 +33,7 @@
   color: #ed991a;
 }
 .evo-header {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   overflow: none;
@@ -53,8 +53,9 @@
 }
 @media only screen and (min-width: 900px) {
   .evo-header {
-    width: 190px;
-    min-width: 190px;
+    position: fixed;
+    width: 170px;
+    min-width: 170px;
     height: 100%;
   }
 }
@@ -71,11 +72,14 @@
     flex-direction: row;
   }
 }
+.evo-head-links > div,
+.evo-head-links2 > div {
+  margin-left: 10px;
+}
 .evo-head-links > li,
 .evo-head-links2 > li {
   display: inline;
   padding: 0 10px;
-  text-align: left;
 }
 .evo-head-links a,
 .evo-head-links2 a {
@@ -100,6 +104,7 @@
 }
 @media only screen and (max-width: 900px) {
   .evo-link2 {
+    margin-left: 30px;
     order: 100;
     width: 100%;
   }
@@ -140,14 +145,14 @@
 .evo-title,
 .evo-title2 {
   background-color: #0099cc;
-  position: fixed;
-  z-index: 1001;
+  position: absolute;
+  z-index: 1002;
   width: 100%;
   overflow: hidden;
 }
 .evo-title > h1,
 .evo-title2 > h1 {
-  margin-left: 20px;
+  margin-left: 16px;
   color: white;
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 500;
@@ -155,8 +160,13 @@
 @media only screen and (min-width: 900px) {
   .evo-title,
   .evo-title2 {
+    width: calc(100% - 170px);
     top: 0 !important;
-    margin-left: 190px;
+    margin-left: 170px;
+  }
+  .evo-title > h1,
+  .evo-title2 > h1 {
+    margin-left: 0;
   }
 }
 .evo-title {
@@ -167,6 +177,7 @@
 .evo-title2 {
   top: 65px;
   padding: 5px 10px;
+  z-index: 1001;
 }
 .evo-content {
   padding: 85px 30px 30px;
@@ -174,7 +185,7 @@
 }
 @media only screen and (min-width: 900px) {
   .evo-content {
-    margin-left: 190px;
+    margin-left: 170px;
     padding-top: 10px;
   }
 }
@@ -184,16 +195,9 @@
 }
 @media only screen and (min-width: 900px) {
   .evo-content2 {
-    margin-left: 190px;
+    margin-left: 170px;
     padding-top: 85px;
   }
-  .evo-anchor {
-    top: -65px !important;
-  }
-}
-.evo-anchor {
-  position: relative;
-  top: -140px;
 }
 .evo-page {
   min-height: 100%;
@@ -463,10 +467,10 @@ h4 {
 /* demo card view*/
 [data-eid="todo"] .evol-cards-body > .panel,
 [data-eid="contact"] .evol-cards-body > .panel {
-  height: 205px !important;
+  height: 145px !important;
 }
 [data-eid="winecellar"] .evol-cards-body > div.panel {
-  height: 272px !important;
+  height: 320px !important;
 }
 [data-eid="comics"] .evol-cards-body > .panel {
   height: 500px !important;

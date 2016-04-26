@@ -5,13 +5,14 @@
  * View "many list" to display a collection as a list (table w/ sorting and paging).
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.List = Evol.View_Many.extend({
 
     viewName: 'list',
+    icon: 'th-list', // glyphicon-th-list
 
     events: _.extend({
         'mouseenter tbody>tr': 'enterItem',
@@ -31,7 +32,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
             link = (this.links!==false);
 
         h+='<div class="evol-many-list">'+
-            '<table class="table table-bordered'+(link?' table-hover':'')+'"><thead><tr>';
+            '<div><table class="table table-bordered'+(link?' table-hover':'')+'"><thead><tr>';
         if(this.selectable){
             h+='<th class="list-td-sel">'+this._HTMLCheckbox('cbxAll')+'</th>';
         }
@@ -40,7 +41,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
         });
         h+='</tr></thead><tbody>'+
             this._HTMLbody(fields, pSize, this.uiModel.icon, 0, this.selectable)+
-            '</tbody></table>'+
+            '</tbody></table></div>'+
             this._HTMLpagination(0, pSize, models.length)+
             '<div class="evo-many-summary">'+this.pageSummary(this.pageIndex, pSize, models.length)+'</div>'+
             '</div>';
@@ -68,7 +69,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
                 v = input.colorBox(f.id, model.escape(f.attribute || f.id));
             }else if(f.type===ft.formula){
                 v = input.formula(null, f, model);
-            }else if(f.type===ft.html){
+            }else if(f.type===ft.json || f.type===ft.html){
                 v = model.get(f.attribute || f.id);
                 //if(v && v.length>200){
                     //v = v.subString(0,200)+'...';
@@ -80,13 +81,15 @@ Evol.ViewMany.List = Evol.View_Many.extend({
                 v = Evol.Dico.fieldLink(null, f, v, icon, !link, route?route+model.id:null);
                 // Item badge
                 if(bf){
-                    v+='<span class="badge badge-list">';
+                    var badgeText;
                     if(_.isFunction(bf)){
-                        v+=bf(model);
+                       badgeText=bf(model)||'';
                     }else if(_.isString(bf)){
-                        v+=model.escape(bf);
+                        badgeText=model.escape(bf)||'';
                     }
-                    v+='</span>';
+                    if(badgeText){
+                        v+='<span class="badge badge-list">'+badgeText+'</span>';
+                    }
                 }
             }
             var css=f.css || '';

@@ -1,6 +1,6 @@
 /*!
-   evolutility 1.1 
-   (c) 2015 Olivier Giulieri 
+   evolutility 1.1.3 
+   (c) 2016 Olivier Giulieri 
    http://evoluteur.github.io/evolutility/  
 */
 // default config for Evolutility UI
@@ -8,8 +8,15 @@
 var Evol = Evol || {};
 
 Evol.Config = {
+
+	// --- using local storage
 	localStorage: true,
-	url: 'http://localhost:3000/api/v1/evolutility/'
+
+	// --- using evolutility-server
+	//url: 'http://localhost:3000/api/v1/evolutility/'
+
+	// --- using postgrest
+	//url: 'http://localhost:3001/'
 };
 ;
 //   Evolutility Localization Library ENGLISH
@@ -58,16 +65,18 @@ Evol.i18n = {
         //Selection: 'Selection',
         bExport: 'Export',
         bImport: 'Import',
-        bCharts: 'Charts',
         //SearchRes: 'Search Result',
         //MassUpdate: 'Mass Update',
         bDelete: 'Delete',
         //bAll: 'All',
         bList: 'List',
-        bFilter: 'Filter',
-        bBubbles: 'Bubbles',
         bCards: 'Cards',
         bJSON: 'JSON',
+        bFilter: 'Filter',
+        bBubbles: 'Bubbles',
+        //bSunburst: 'Sunburst',
+        //bScatter:'Scatter',
+        bCharts: 'Charts',
         //bRefresh: 'Refresh',
         //bPrint: 'Print',
         bSave: 'Save',
@@ -79,6 +88,10 @@ Evol.i18n = {
         vizGroupBy: 'Group by',
         vizColorBy: 'Color by',
         vizSizeBy: 'Size by',
+
+        //xAxis: 'X Axis',
+        //yAxis: 'Y Axis',
+        //zAxis: 'Z Axis',
 
         // --- wizard ---
         prev: 'Previous',
@@ -255,7 +268,7 @@ Evol.i18n = {
  * Library of helpers for metamodel
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -298,11 +311,15 @@ return {
         return viewName==='new' || viewName==='edit' || viewName==='browse' || viewName==='json';
     },*/
     isViewMany: function(viewName){
-        return viewName==='list' || viewName==='cards' || viewName==='charts' || viewName==='bubbles'|| viewName==='sunburst';
+        return this.isViewCollection(viewName) || this.isViewCharts(viewName);
     },
     
     isViewCollection: function(viewName){
         return viewName==='list' || viewName==='cards';
+    },
+
+    isViewCharts: function(viewName){
+        return viewName==='charts' || viewName==='bubbles' || viewName==='scatter' || viewName==='sunburst';
     },
 
     fieldInCharts: function (f) {
@@ -507,7 +524,7 @@ return {
  * Helpers for string manipulation and date formats
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -529,7 +546,7 @@ Evol.Format = {
         return '';
     },
     cr2br: function(v, escape){
-        if(v==='' || v===null){
+        if(v==='' || v===null || _.isUndefined(v)){
             return '';
         }
         var txt=escape?_.escape(v):v;
@@ -575,11 +592,18 @@ Evol.Format = {
 
     // --- JSON formats ---
     jsonString: function(d, cr2br){
-        var dd = (_.isString(d) && d!=='') ? $.parseJSON(d) : d;
+        var dd;
+        try{
+            dd=(_.isString(d) && d!=='') ? $.parseJSON(_.unescape(d)) : d;
+        }catch(err){
+            alert('Error: format.jsonString'+ err);
+            dd={"error": "Evol.Format.jsonString"};
+        }
         if(dd===''){
             return  dd;
         }else{
-            var txt=JSON.stringify(dd, null, '\t');
+            //var txt=JSON.stringify(dd, null, '\t');
+            var txt=JSON.stringify(dd, null, 2);
             if(cr2br){
                 txt=this.cr2br(txt);
             }
@@ -594,7 +618,7 @@ Evol.Format = {
  * evolutility :: dom.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -636,7 +660,7 @@ Evol.DOM = {
         },
         text: function (id, value, fd, css) {
             var h = '<input type="text" id="'+id;
-            if(value && value.indexOf('"')>-1){
+            if(value && _.isString(value)){
                 value=value.replace(/"/g,'\"');
             }
             h+='" value="'+value;
@@ -676,15 +700,16 @@ Evol.DOM = {
         textMJSON: function (id, fVobj, height, disabled) {
             return '<textarea id="'+id+'" rows="'+height+'" class="evol-json evo-field form-control"'+(disabled?' disabled':'')+'>'+
                     //_.escape(JSON.stringify(fVobj, null, '\t'))+
-                    JSON.stringify(fVobj, null)+
+                    Evol.Format.jsonString(fVobj, false)+
                 '</textarea>';
         },
         myType: function (type, id, value) {
             return '<input type="'+type+'" id="'+id+'" value="'+value+
                 '" class="evo-field form-control" size="15">';
         },
+
         date: function (id, value) {
-            return this.myType('date', id, value);
+            return this.myType('date', id, (value||'').substring(0, 10));
             //+'&nbsp;<a href="javascript:ShowDatePicker(\'', id, '\');" class="ico Calendar"></a></nobr>'
         },
         dateTime: function (id, value) {
@@ -1006,12 +1031,13 @@ Evol.DOM = {
 
 };
 ;
+
 /*! ***************************************************************************
  *
  * evolutility :: dom-charts.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -1050,7 +1076,6 @@ Evol.DOM.Charts = {
     }
 
 };
-
 ;
 /*! ***************************************************************************
  *
@@ -1059,7 +1084,7 @@ Evol.DOM.Charts = {
  * Library of helpers for dictionary
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -1076,9 +1101,15 @@ Evol.Dico = function(){
 return {
 
     fieldEdit: {
+
         field: function (f, fType, fid, fv) {
             return uiInput[fType](fid, fv, f, null);
         },
+
+        default: function (f, fid, fv) {
+            return uiInput.text(fid, fv, f, null);
+        },
+
         text: function (f, fid, fv) {
             return uiInput.text(fid, fv, f, null);
         },
@@ -1094,10 +1125,7 @@ return {
             }
             return uiInput.textM(fid, fv, f.maxlength, f.height);
         },
-        html: function (f, fid, fv) {
-            // TODO
-            return uiInput.textM(fid, fv, f.maxlength, f.height);
-        },
+
         boolean: function (f, fid, fv) {
             return uiInput.checkbox(fid, fv);
         },
@@ -1112,6 +1140,7 @@ return {
             return '<div class="input-group evol-money">'+uiInput.typeFlag('$')+
                 uiInput.textInt(fid, fv, f.max, f.min)+'</div>';
         },
+
         date: function (f, fid, fv) {
             return uiInput.date(fid, fv);
         },
@@ -1121,12 +1150,18 @@ return {
         time: function (f, fid, fv) {
             return uiInput.time(fid, fv);
         },
+/*
+        geoloc: function (f, fid, fv) {
+            return uiInput.geoloc(fid, fv);
+        },
+*/
         lov: function (f, fid, fv) {
             return uiInput.select(fid, fv, '', true, f.list);
         },
         list: function (f, fid, fv) { // fv is an array. will use select2
             return '<div id="'+fid+'" class="w-100 form-control"></div>';
         },
+
         email: function (f, fid, fv) {
             return '<div class="input-group">'+uiInput.typeFlag(i18n.msg.sgn_email)+
                 uiInput.text(fid, fv, f)+
@@ -1135,10 +1170,6 @@ return {
         url: function (f, fid, fv) {
             return uiInput.text(fid, fv, f);
             //fv!==''?EvoUI.link(fid,'',fv):''
-        },
-        json: function(f, fid, fv){
-            // TODO
-            return uiInput.textM(fid, fv, f.maxlength, f.height);
         },
         //doc: function(f, fid, fv, iconsPath){
         //},
@@ -1157,6 +1188,14 @@ return {
         },
         hidden: function(f, fid, fv){
             return uiInput.hidden(fid, fv);
+        },
+        html: function (f, fid, fv) {
+            // TODO
+            return uiInput.textM(fid, fv, f.maxlength, f.height);
+        },
+        json: function(f, fid, fv){
+            // TODO
+            return uiInput.textM(fid, fv, f.maxlength, f.height);
         },
         formula: function(f, fid, fv){
             return '<div class="evol-ellipsis">'+uiInput.text(fid, fv, f, null)+'</div>';
@@ -1218,7 +1257,7 @@ return {
                 }
                 break;
             case fts.list:
-                if(_.isString(v)){
+                if(_.isString(v) && v!==''){
                     v = v.split(',');
                 }
                 if(v && v.length && v[0]!==''){
@@ -1272,7 +1311,8 @@ return {
     fieldLink: function (id, fld, value, icon, noLink, route) {
         var h='';
         if(!noLink){
-            h+='<a href="'+(route?route:'javascript:void(0);');
+            var js='javascript'; // necessary for jshint
+            h+='<a href="'+(route?route:(js+':void(0);'));
             if(id){
                 h+='" id="'+id;
             }
@@ -1299,6 +1339,7 @@ return {
         if(that.titleSelector){
             $(that.titleSelector)
                 .html(
+                    (that.icon?'<i class="glyphicon glyphicon-'+that.icon+'"></i>&nbsp;':'')+
                     (title?title:that.getTitle())+
                     (badge?'<span class="badge badge-one">'+badge+'</span>':'')
                 );
@@ -1316,7 +1357,20 @@ return {
             case fts.money:
                 return parseFloat($f.val());
             case fts.list:
-                return $f.select2('val');
+                try{
+                    return $f.select2('val');
+                }catch(e){
+                    console.error('error with select2');
+                    //alert('error with select2')
+                    return '';
+                }
+                break;
+            case fts.date:
+                var d=$f.val();
+                if(d.length===10){
+                    d+='T08:00:00.000Z';
+                }
+                return d;
             default:
                 return $f.val();
         }
@@ -1336,7 +1390,9 @@ return {
                 });
                 if(listItem){
                     var txt= _.escape(listItem.text);
-                    if(listItem.icon!=='' && !_.isUndefined(listItem.icon)){
+                    if(listItem.glyphicon){
+                        txt='<i class="glyphicon glyphicon-'+listItem.glyphicon+'"></i> '+txt;
+                    }else if(listItem.icon){
                         txt='<img src="'+((listItem.icon && listItem.icon.substring(0,1)!=='.')?iconsPath:'')+listItem.icon+'"> '+txt;
                     }
                     hashLov[v]=txt;
@@ -1574,7 +1630,7 @@ return {
         },
         // -- start w/
         'sw': function(fv, cv){
-            return fv.toLocaleLowerCase().indexOf(cv)===0;
+            return fv.substring(0, cv.length).toLocaleLowerCase()===cv;
         },
         // -- contains
         'ct': function(fv, cv){
@@ -1745,6 +1801,8 @@ Bubbles.prototype.setData = function(data){
 
 
   this.nodes.exit().remove();
+
+  this.changeBubblesSize (this.sizeFieldId);
 
   this.changeBubblesGroup(this.groupFieldId);
 
@@ -1941,7 +1999,7 @@ return Bubbles;
  * View "many" for other ViewMany views to inherit from.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -2055,8 +2113,8 @@ return Backbone.View.extend({
     },
 
     render: function () {
-        var models = this.collection.models;
-        if (this.collection.length) {
+        var models = this.collection ? this.collection.models : null;
+        if (this.collection && this.collection.length) {
             models = eDico.filterModels(models, this._filter);
             this._render(models);
         } else {
@@ -2131,8 +2189,8 @@ return Backbone.View.extend({
         return this._filter;
     },
 
-    setTitle: function () {
-        return eDico.setViewTitle(this);
+    setTitle: function (title){
+        return eDico.setViewTitle(this, title||this.getTitle());
     },
 
     getTitle: function () {
@@ -2363,13 +2421,14 @@ return Backbone.View.extend({
  * View "many bubbles" to show a Bubble Chart of a collection of many models.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.Bubbles = Evol.View_Many.extend({
 
     viewName: 'bubbles',
+    icon: 'adjust', // glyphicon-adjust
 
     events: {
         //'click .evol-buttons>button': 'click_button',
@@ -2404,7 +2463,7 @@ Evol.ViewMany.Bubbles = Evol.View_Many.extend({
                 uiModel: this.uiModel,
                 tooltip: function(d){
                     var h=[],
-                    flds=that.getFields();//(h, fields, model, icon, selectable, route, isTooltip)
+                    flds=that.getFields();
                     Evol.ViewMany.Cards.prototype.HTMLItem.call(that, h, flds, new Backbone.Model(d), null, null, null, true);
                     return h.join('');
                 }
@@ -2527,13 +2586,15 @@ Evol.ViewMany.Bubbles = Evol.View_Many.extend({
  * View "many cards" to show a collection as many cards.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.Cards = Evol.View_Many.extend({
 
     viewName: 'cards',
+    // TODO icon should be different than view Mini
+    icon: 'th-large', // glyphicon-th-large
 
     events: _.extend({
         'mouseenter .evol-cards-body>div': 'enterItem',
@@ -2583,6 +2644,8 @@ Evol.ViewMany.Cards = Evol.View_Many.extend({
                 v = '<a href="#'+route+model.id+'">'+
                     that._HTMLField(f, model.escape(f.attribute || f.id))+
                     '</a>';
+            }else if(f.type===fts.json){
+                v = model.get(f.attribute || f.id);
             }else{
                 v = that._HTMLField(f, model.escape(f.attribute || f.id));
             }
@@ -2672,7 +2735,7 @@ Evol.ViewMany.Cards = Evol.View_Many.extend({
  * View "many charts" to display a collection as a set of charts.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -2688,6 +2751,7 @@ var dom = Evol.DOM,
 return Evol.View_Many.extend({
 
     viewName: 'charts',
+    icon: 'stats', // glyphicon-stats
 
     isChart: true,
 
@@ -2842,13 +2906,14 @@ return Evol.View_Many.extend({
  * View "many list" to display a collection as a list (table w/ sorting and paging).
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.List = Evol.View_Many.extend({
 
     viewName: 'list',
+    icon: 'th-list', // glyphicon-th-list
 
     events: _.extend({
         'mouseenter tbody>tr': 'enterItem',
@@ -2868,7 +2933,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
             link = (this.links!==false);
 
         h+='<div class="evol-many-list">'+
-            '<table class="table table-bordered'+(link?' table-hover':'')+'"><thead><tr>';
+            '<div><table class="table table-bordered'+(link?' table-hover':'')+'"><thead><tr>';
         if(this.selectable){
             h+='<th class="list-td-sel">'+this._HTMLCheckbox('cbxAll')+'</th>';
         }
@@ -2877,7 +2942,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
         });
         h+='</tr></thead><tbody>'+
             this._HTMLbody(fields, pSize, this.uiModel.icon, 0, this.selectable)+
-            '</tbody></table>'+
+            '</tbody></table></div>'+
             this._HTMLpagination(0, pSize, models.length)+
             '<div class="evo-many-summary">'+this.pageSummary(this.pageIndex, pSize, models.length)+'</div>'+
             '</div>';
@@ -2905,7 +2970,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
                 v = input.colorBox(f.id, model.escape(f.attribute || f.id));
             }else if(f.type===ft.formula){
                 v = input.formula(null, f, model);
-            }else if(f.type===ft.html){
+            }else if(f.type===ft.json || f.type===ft.html){
                 v = model.get(f.attribute || f.id);
                 //if(v && v.length>200){
                     //v = v.subString(0,200)+'...';
@@ -2917,13 +2982,15 @@ Evol.ViewMany.List = Evol.View_Many.extend({
                 v = Evol.Dico.fieldLink(null, f, v, icon, !link, route?route+model.id:null);
                 // Item badge
                 if(bf){
-                    v+='<span class="badge badge-list">';
+                    var badgeText;
                     if(_.isFunction(bf)){
-                        v+=bf(model);
+                       badgeText=bf(model)||'';
                     }else if(_.isString(bf)){
-                        v+=model.escape(bf);
+                        badgeText=model.escape(bf)||'';
                     }
-                    v+='</span>';
+                    if(badgeText){
+                        v+='<span class="badge badge-list">'+badgeText+'</span>';
+                    }
                 }
             }
             var css=f.css || '';
@@ -3006,7 +3073,7 @@ Evol.ViewMany.List = Evol.View_Many.extend({
  * View "one" should not be instanciated but inherited.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -3184,6 +3251,7 @@ return Backbone.View.extend({
                         case fts.url:
                         case fts.email:
                         case fts.list:
+                        case fts.lov:
                             $f.html(eDico.fieldHTML_RO(f, _.isUndefined(fv)?'':fv, Evol.hashLov, iconsPath) + ' ');
                             break;
                         case fts.formula:
@@ -3193,7 +3261,7 @@ return Backbone.View.extend({
                             $f.html(uiInput.colorBox(f.id, fv, fv));
                             break;
                         case fts.json:
-                            $f.val(Evol.Format.jsonString(fv, true));
+                            $f.val(Evol.Format.jsonString(fv, false));
                             break;
                         default:
                             $f.text(eDico.fieldHTML_RO(f, _.isUndefined(fv)?'':fv, Evol.hashLov, iconsPath) + ' ');
@@ -3223,7 +3291,13 @@ return Backbone.View.extend({
                             $f.before(newPix);
                             break;
                         case fts.list:
-                            $f.select2('val', fv);
+                            //$f.select2('val', fv);
+                            try{
+                                $f.select2('val', _.isString(fv)?[fv]:fv);
+                            }catch(e){
+                                console.error('error with select2');
+                                return '';
+                            }
                             break;
                         case fts.formula:
                             $f.html(f.formula?f.formula(model):'');
@@ -3284,6 +3358,9 @@ return Backbone.View.extend({
                     return fv;
                 }
                 return obj;
+            }else if(f.type===fts.date){
+                var v=eDico.getFieldVal(f, this.$field(f.id));
+                return v.length===10?v+'T08:00:00.000Z':v;
             }else{
                 return eDico.getFieldVal(f, this.$field(f.id));
             }
@@ -3629,20 +3706,26 @@ return Backbone.View.extend({
 
     _renderPanelList: function (h, p, mode) {
         var isEditable = p.readonly?false:(mode!=='browse'),
-            vMode=isEditable?mode:'browse';
+            vMode=isEditable?mode:'browse',
+            fts=eDef.fieldTypes;
 
         h.push('<div style="width:'+p.width+'%" class="evol-pnl" data-pid="'+p.id+'">',
             dom.panelBegin(p, this.style, true),
-            '<table class="table" data-mid="'+(p.attribute || p.id)+'"><thead><tr>');
+            '<div class="evo-plist"><table class="table" data-mid="'+(p.attribute || p.id)+'"><thead><tr>');
         _.each(p.elements, function (elem) {
-            h.push('<th>'+elem.label+((isEditable && elem.required)?dom.html.required:'')+'</th>');
+            if(elem.type===fts.pix){
+                h.push('<th class="evo-col-pix">');
+            }else{
+                h.push('<th>');
+            }
+            h.push(elem.label+((isEditable && elem.required)?dom.html.required:'')+'</th>');
         });
         if(vMode==='edit'){
             h.push('<th></th>');
         }
         h.push('</tr></thead><tbody>');
         this._renderPanelListBody(h, p, null, vMode);
-        h.push('</tbody></table>',
+        h.push('</tbody></table></div>',
             dom.panelEnd(),
             '</div>');
         return this;
@@ -3712,11 +3795,15 @@ return Backbone.View.extend({
             fv = (mode !== 'new') ? this.model.get(f.id) : f.defaultValue || '';
         }
         if(f.type===fts.formula){
-            h.push(Evol.Dico.HTMLFieldLabel(f, mode || 'edit')+
-                dom.input.formula(this.fieldViewId(f.id), f, this.model));
-        }else if(f.type===fts.json && mode==='browse'){
-            h.push(Evol.Dico.HTMLFieldLabel(f, mode)+
-                dom.input.textM(this.fieldViewId(f.id), Evol.Format.jsonString(fv, false), f.maxLen, f.height, true));
+            if(!skipLabel){
+                h.push(Evol.Dico.HTMLFieldLabel(f, mode || 'edit'));
+            }
+            h.push(dom.input.formula(this.fieldViewId(f.id), f, this.model));
+        }else if(f.type===fts.json && (mode==='browse' || f.readOnly)){
+            if(!skipLabel){
+                h.push(Evol.Dico.HTMLFieldLabel(f, mode));
+            }
+            h.push(dom.input.textM(this.fieldViewId(f.id), Evol.Format.jsonString(fv, false), f.maxLen, f.height, true));
         }else{
             h.push(eDico.fieldHTML(f, this.fieldViewId(f.id), fv, mode, iconsPath, skipLabel));
         }
@@ -3738,7 +3825,11 @@ return Backbone.View.extend({
     setTitle: function (title){
         var bdg=this.uiModel.fnBadge;
         if(bdg){
-            bdg=bdg(this.model);
+            if(_.isString(bdg)){
+                bdg=this.model.escape(bdg)||'';
+            }else{
+                bdg=bdg(this.model);
+            }
         }
         return eDico.setViewTitle(this, title, bdg);
     },
@@ -3762,7 +3853,7 @@ return Backbone.View.extend({
                     scInvalid = 0;
                 _.each(scData, function(rowData, idx){
                     _.each(sc.elements, function(f){
-                        if(that.validateField(f, rowData[f.id])){
+                        if(that.validateField(f, f.type==='date' ? rowData[f.id].substring(0,10) : rowData[f.id])){
                             trs.eq(idx).find('#'+f.id).parent().addClass('has-error');
                             scInvalid++;
                         }
@@ -3839,7 +3930,7 @@ return Backbone.View.extend({
             if (f.required && (v==='' ||
                     (numberField && isNaN(v)) ||
                     (f.type===fts.lov && v==='0') ||
-                    (f.type===fts.list && v.length===0) //||
+                    (f.type===fts.list && v && v.length===0) //||
                     //(f.type===fts.color && v==='#000000')
                 )){
                 return formatMsg(f.label, i18nVal.empty);
@@ -4156,7 +4247,7 @@ return Backbone.View.extend({
  * View "one browse" to browse one model in readonly mode.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -4164,6 +4255,7 @@ Evol.ViewOne.Browse = Evol.View_One.extend({
 
     viewName: 'browse',
     editable: false,
+    icon: 'eye-open', // glyphicon-eye-open
     prefix: 'ovw',
 
     getData: function () {
@@ -4282,13 +4374,14 @@ Evol.ViewOne.Browse = Evol.View_One.extend({
  * View "one edit" to edit one backbone model.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewOne.Edit = Evol.View_One.extend({
 
     viewName: 'edit',
+    icon: 'edit', // glyphicon-edit
     prefix: 'oe',
 
     postRender:function(){
@@ -4314,7 +4407,7 @@ Evol.ViewOne.Edit = Evol.View_One.extend({
  * View "one json" to edit one backbone model in JSON.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -4326,6 +4419,7 @@ Evol.ViewOne.JSON = Evol.View_One.extend({
     },
 
     viewName: 'json',
+    icon: 'barcode', // glyphicon-barcode
 
     render: function () {
         var dom=Evol.DOM;
@@ -4407,7 +4501,7 @@ Evol.ViewOne.JSON = Evol.View_One.extend({
  * View "one mini" to "quick edit" one backbone model (only showing important or required fields).
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -4426,6 +4520,7 @@ return Evol.ViewOne.Edit.extend({
     },
 
     viewName: 'mini',
+    icon: 'th-large', // glyphicon-th-large
     prefix: 'om',
 
     fieldsetFilter: function(f){
@@ -4481,12 +4576,13 @@ return Evol.ViewOne.Edit.extend({
  * evolutility :: action-export.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewAction.Export = function(){
 
+    // TODO: add badge value, formula fields as possible exportable fields too.
     var dom = Evol.DOM,
         eDico = Evol.Dico,
         fts = Evol.Def.fieldTypes,
@@ -4498,6 +4594,7 @@ return Backbone.View.extend({
 
     viewName: 'export',
     cardinality: 'n',
+    icon: 'cloud-download', // glyphicon-cloud-download
 
     events: {
         'change .evol-xpt-format': 'click_format',
@@ -4539,7 +4636,7 @@ return Backbone.View.extend({
             '<div><label>'+i18nXpt.xpFields+'</label></div>'+
             '<fieldset class="checkbox">';
 
-        //### list of columns to export #########################################
+        //---- export fields: attributes included in the export -----------------------------
         h+='<label><input type="checkbox" value="1" id="showID">'+i18nXpt.IDkey+'</label>';
         _.each(fields, function(f, idx){
             var fLabel = f.labelExport || f.label || f.labelList,
@@ -4557,7 +4654,7 @@ return Backbone.View.extend({
         }
         h+='</fieldset></div><div class="evol-xpt-para">';
 
-        //##### export formats ########################################
+        //---- export formats: CSV, JSON... ------------------------------------------------
         var fId = 'evol-xpt-format',
             formatsList = _.map(formats, function(format){
                     return {
@@ -4569,14 +4666,14 @@ return Backbone.View.extend({
             uiInput.select(fId, '', 'evol-xpt-format', false, formatsList)+'</div>';
         fId = 'xptFLH';
         h+='<div class="evol-xpt-opts">'+
-            //# field (shared b/w formats - header #######
+            //---- field (shared b/w formats - header -----------------------------
             '<div class="evol-FLH clearfix">'+
                 '<label class="evol-xpt-cb1">'+uiInput.checkbox(fId, true)+i18nXpt.firstLine+'</label>'+
                 uiInput.select('xpt-header', '', 'evol-xpt-header', false, [
                     {id:'label', text:i18nXpt.headerLabels},
                     {id:'attribute', text:i18nXpt.headerIds}
                 ])+
-            //##### CSV, TAB - First line for field names #######
+            //---- CSV, TAB - First line for field names ----
             '</div><div id="xptCSV" class="evol-xpt-opt">'+
                 //# field - separator
                 //# - csv - any separator #######
@@ -4589,12 +4686,12 @@ return Backbone.View.extend({
             h+='<div id="xpt'+f+'" style="display:none;"></div>';
         });
         h+='</div></div>'+
-            //# Preview #######
+            //---- Preview -----------------------------
             dom.html.clearer+'<label class="evol-xpt-pvl">'+i18nXpt.preview+'</label>'+
-            // ## Samples
+            // ---- Samples ----
             '<textarea class="evol-xpt-val form-control"></textarea>'+
             '</div></div></div>'+
-            // ## Download button
+            // ---- Download button ----
             '<div class="panel '+this.style +' evol-buttons form-actions">'+
                 dom.button('cancel', i18n.tools.bCancel, 'btn-default')+
                 dom.button('export', i18nXpt.DownloadEntity.replace('{0}', this.uiModel.namePlural), 'btn btn-primary')+
@@ -4656,8 +4753,8 @@ return Backbone.View.extend({
             options = params.options,
             maxItem = this.sampleMaxSize-1;
 
-        if(this.model && this.model.collection){
-            var data = this.model.collection.models,
+        if(this.collection || (this.model && this.model.collection)){
+            var data = this.collection ? this.collection.models : this.model.collection.models,
                 fldsDomHash = {};
 
             _.each(params.fields, function(fid){
@@ -4709,6 +4806,7 @@ return Backbone.View.extend({
                             h+=(m.id||('m'+idx))+sep;
                         }
                         _.each(flds, function(f, idx){
+                            //var mv = f.type==fts.formula ? f.formula(m) : m.get(f.id);
                             var mv = m.get(f.id);
                             if (mv) {
                                 if(f.type===fts.bool){
@@ -4915,7 +5013,7 @@ return Backbone.View.extend({
                             h+=f.id+'="';
                             if(f.type===fts.text || f.type===fts.textml){
                                 fv=m.get(f.id);
-                                if(!_.isArray(fv) && !_.isUndefined(fv)){
+                                if(!_.isArray(fv) && !_.isUndefined(fv) && fv!==''){
                                     h+=fv.replace(/"/g, '\\"');
                                 }
                             }else{
@@ -5058,7 +5156,7 @@ return Backbone.View.extend({
  * evolutility :: action-filter.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -5133,13 +5231,13 @@ return Backbone.View.extend({
             h='';
 
         h+=dom.html.buttonClose+'<div class="evo-zfilters"></div>'+
-            '<a class="evo-bNew btn btn-primary" href="javascript:void(0)">'+evoLang.bNewCond+'</a>';
+            '<a class="evo-bNew btn btn-primary btn-group-sm glyphicon glyphicon-plus" href="javascript:void(0)"></a>';// '+evoLang.bNewCond+'
         if(this.submitButton){
-            h+='<a class="evo-bSubmit btn btn-primary" href="javascript:void(0)">'+evoLang.bSubmit+'</a>';
+            h+='<a class="evo-bSubmit btn btn-primary glyphicon glyphicon-ok" href="javascript:void(0)"></a>';// '+evoLang.bSubmit+'
         }
         h+='<div class="evo-editFilter"></div>'+
-            '<a class="evo-bAdd btn btn-primary" style="display:none;" href="javascript:void(0)">'+evoLang.bAddCond+'</a>'+
-            '<a class="evo-bDel btn btn-default" style="display:none;" href="javascript:void(0)">'+evoLang.bCancel+'</a>';
+            '<a class="evo-bAdd btn btn-primary glyphicon glyphicon-ok" style="display:none;" href="javascript:void(0)"></a>'+// '+evoLang.bAddCond+'
+            '<a class="evo-bDel btn btn-default glyphicon glyphicon-remove" style="display:none;" href="javascript:void(0)"></a>';// '+evoLang.bCancel+'
         e.html(h);
         this._step=0;
         if(this.submitReady){
@@ -5232,6 +5330,7 @@ return Backbone.View.extend({
                     filter.remove();
                     that._triggerChange();
                 });
+                that._removeEditor();
             }
         });
         return this;
@@ -5396,8 +5495,8 @@ return Backbone.View.extend({
                                     fOption(fOps.sNotEqual, evoLang.sNotOn);
                             }
                             h+=fOption(fOps.sGreater, evoLang.sAfter)+
-                                fOption(fOps.sSmaller, evoLang.sBefore)+
-                                fOption(fOps.sBetween, evoLang.sBetween);
+                                fOption(fOps.sSmaller, evoLang.sBefore);//+
+                                //fOption(fOps.sBetween, evoLang.sBetween 
                             break;
                         case fts.int:
                         case fts.dec:
@@ -5699,7 +5798,7 @@ return Backbone.View.extend({
  * evolutility :: action-import.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -5717,6 +5816,7 @@ return Backbone.View.extend({
 
     viewName: 'import',
     cardinality: 'n',
+    icon: 'cloud-upload', // glyphicon-cloud-upload
 
     events: {
         'click button': 'click_button',
@@ -5920,7 +6020,7 @@ return Backbone.View.extend({
             h = JSON.stringify(sample, null, '\t');
         }else{
             var r=[];
-            for (p in sample[0]){
+            for (var p in sample[0]){
                 r.push(p);
             }
             h += r.join(',');
@@ -5969,7 +6069,7 @@ return Backbone.View.extend({
  * View "toolbar" (one toolbar instance manages all views for a UI model).
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -6065,16 +6165,16 @@ return Backbone.View.extend({
             ],
             views: [
                 // -- views ONE ---
-                {id:'browse', label: i18nTool.bBrowse, icon:'eye-open',n:'1'},// // ReadOnly
-                {id:'edit', label: i18nTool.bEdit, icon:'edit',n:'1', readonly:false},// // All Fields for editing
-                {id:'mini', label: i18nTool.bMini, icon:'th-large',n:'1', readonly:false},// // Important Fields only
+                {id:'browse', label: i18nTool.bBrowse, icon:'eye-open', n:'1'},// // ReadOnly
+                {id:'edit', label: i18nTool.bEdit, icon:'edit', n:'1', readonly:false},// // All Fields for editing
+                {id:'mini', label: i18nTool.bMini, icon:'th-large', n:'1', readonly:false},// // Important Fields only
                 //{id:'wiz',label: i18nTool.bWizard, icon:'arrow-right',n:'1'},
-                {id:'json', label: i18nTool.bJSON, icon:'barcode',n:'1', readonly:false},
+                {id:'json', label: i18nTool.bJSON, icon:'barcode', n:'1', readonly:false},
                 // -- views MANY ---
-                {id:'list', label: i18nTool.bList, icon:'th-list',n:'n'},
-                {id:'cards', label: i18nTool.bCards, icon:'th-large',n:'n'},
-                {id:'bubbles', label: i18nTool.bBubbles, icon:'adjust',n:'n'},
-                {id:'charts', label: i18nTool.bCharts, icon:'stats',n:'n'}
+                {id:'list', label: i18nTool.bList, icon:'th-list', n:'n'},
+                {id:'cards', label: i18nTool.bCards, icon:'th-large', n:'n'},
+                {id:'bubbles', label: i18nTool.bBubbles, icon:'adjust', n:'n'},
+                {id:'charts', label: i18nTool.bCharts, icon:'stats', n:'n'}
             ],
             search: true
         }
@@ -6194,6 +6294,7 @@ return Backbone.View.extend({
             this.newItem();
             this.setIcons('new');
             vw.mode='new';
+            this.hideFilter();
         }else{
             var ViewClass = Evol.viewClasses.getClass(viewName);
             if($v.length){
@@ -6305,7 +6406,7 @@ return Backbone.View.extend({
                     this.curView=vw;
                     this.viewsHash[viewName]=vw;
                     if(!skipIcons){
-                        $(this.titleSelector).html(vw.getTitle());
+                        this.setTitle();
                     }
                 }
             }
@@ -6313,11 +6414,12 @@ return Backbone.View.extend({
         this.updateStatus();
         if(vw.cardinality==='n'){
             this.setRoute('', false);
-            if(this._filterOn){ // TODO do not always change flag
+            if(!this._filterOn && this._filterValue){ // TODO do not always change flag
                 this.showFilter(false);
             }
             this.updateNav();
         }else{
+            this.hideFilter();
             //if(this.curView.viewName==='wizard'){
             //    this.curView.stepIndex(0);
             //}
@@ -6493,7 +6595,7 @@ return Backbone.View.extend({
         return this;
     },
 
-    hideFilter: function(evt){
+    hideFilter: function(){
         if(this._filters){
             this._filters.$el.hide(); //.fadeOut(300);
         }
@@ -6501,13 +6603,13 @@ return Backbone.View.extend({
         return this;
     },
 
-    _flagFilterIcon: function(fOn){
-        dom.addRemClass(this.$('a[data-id="filter"]'), fOn, 'evo-filter-on');
+    toggleFilter: function(v){
+        this._filterOn = _.isBoolean(v) ? v : !this._filterOn;
+        return this._filterOn ? this.showFilter(true) : this.hideFilter();
     },
 
-    toggleFilter: function(){
-        this._filterOn=!this._filterOn;
-        return this._filterOn?this.showFilter(true):this.hideFilter();
+    _flagFilterIcon: function(fOn){
+        dom.addRemClass(this.$('a[data-id="filter"]'), fOn, 'evo-filter-on');
     },
 
     setData: function(data){
@@ -6626,29 +6728,28 @@ return Backbone.View.extend({
 
         if(msgs.length===0){
             var entityName=this.uiModel.name;
-            if(_.isUndefined(this.model) || (this.model && this.model.isNew())){
-                var collec=this.collection;
-                if(collec){
-                    collec.create(this.getData(true), {
+            if(_.isUndefined(this.model) || (this.model && this.model.isNew())){ // CREATE
+                if(this.collection){
+                    this.collection.create(this.getData(true), {
                         success: function(m){
                             fnSuccess(m);
-                            //that.collection.set(m, {remove:false});
+                            that.setRoute(m.id, false);
                             that.setMessage(i18n.getLabel('saved', Evol.Format.capitalize(entityName)), i18n.getLabel('msg.added', entityName, _.escape(vw.getTitle())), 'success');
                         },
                         error:function(m, err){
-                            alert('error in "saveItem"');
+                            alert('Error in "saveItem"');
                         }
                     });
                     this.mode='edit';
                 }else{
                     alert('Can\'t save record b/c no collection is specified.'); //TODO use bootstrap modal
                 }
-            }else{
+            }else{ // UPDATE
                 // TODO fix bug w/ insert when filter applied => dup record
-                var updateModel = this.getData(true);
-                this.model.set(updateModel);
-                this.model.save({}, {
-                    //patch: true,
+                var updatedModel = this.getData(true);
+                this.model.set(updatedModel);
+                this.model.save(this.model.changedAttributes(), {
+                    patch: !Evol.Config.localStorage,
                     success: function(m){
                         fnSuccess(m);
                         that.collection.set(m, {remove:false});
@@ -6688,7 +6789,9 @@ return Backbone.View.extend({
 
         if(id || this.curView.cardinality==='1'){
             if(id){
-                this.setModelById(id, true);
+                //this.setModelById(id, true);
+                var mid=Evol.Config.localStorage?''+id:id; // using string or int
+                this.model=this.collection.findWhere({id: mid});
                 var t=this.uiModel.fnTitle;
                 if(t && this.model){
                     if(_.isString(t)){
@@ -7006,23 +7109,19 @@ return Backbone.View.extend({
         var fvs=this._filters.val(),
             collec;
         if(fvs.length){
-            var models;
-            if(this._searchString){
-                models=this._filteredCollection.models;
-            }else{
-                models=this.model.collection.models;
-            }
+            var models=this._searchString ? this._filteredCollection.models : this.model.collection.models;
             models=Evol.Dico.filterModels(models, fvs);
             if(this.collectionClass){
                 collec=new this.collectionClass(models);
             }else{
                 collec=new Backbone.Collection(models);
             }
-            this._filteredCollection=collec;
-            
+            this._filteredCollection = collec;
+            this._filterValue = fvs;
         }else{
             collec=this.collection;
-            this._filteredCollection=null;
+            this._filteredCollection = null;
+            this._filterValue = null;
         }
         this.updateStatus();
         this._flagFilterIcon(fvs.length);
@@ -7107,7 +7206,7 @@ return Backbone.View.extend({
  * View "app" to manage the single page app for all objects/ui-models.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 

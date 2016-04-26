@@ -3,7 +3,7 @@
  * evolutility :: dom.js
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -45,7 +45,7 @@ Evol.DOM = {
         },
         text: function (id, value, fd, css) {
             var h = '<input type="text" id="'+id;
-            if(value && value.indexOf('"')>-1){
+            if(value && _.isString(value)){
                 value=value.replace(/"/g,'\"');
             }
             h+='" value="'+value;
@@ -94,7 +94,7 @@ Evol.DOM = {
         },
 
         date: function (id, value) {
-            return this.myType('date', id, value);
+            return this.myType('date', id, (value||'').substring(0, 10));
             //+'&nbsp;<a href="javascript:ShowDatePicker(\'', id, '\');" class="ico Calendar"></a></nobr>'
         },
         dateTime: function (id, value) {

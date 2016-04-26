@@ -5,7 +5,7 @@
  * View "one" should not be instanciated but inherited.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -183,6 +183,7 @@ return Backbone.View.extend({
                         case fts.url:
                         case fts.email:
                         case fts.list:
+                        case fts.lov:
                             $f.html(eDico.fieldHTML_RO(f, _.isUndefined(fv)?'':fv, Evol.hashLov, iconsPath) + ' ');
                             break;
                         case fts.formula:
@@ -192,7 +193,7 @@ return Backbone.View.extend({
                             $f.html(uiInput.colorBox(f.id, fv, fv));
                             break;
                         case fts.json:
-                            $f.val(Evol.Format.jsonString(fv, true));
+                            $f.val(Evol.Format.jsonString(fv, false));
                             break;
                         default:
                             $f.text(eDico.fieldHTML_RO(f, _.isUndefined(fv)?'':fv, Evol.hashLov, iconsPath) + ' ');
@@ -222,7 +223,13 @@ return Backbone.View.extend({
                             $f.before(newPix);
                             break;
                         case fts.list:
-                            $f.select2('val', fv);
+                            //$f.select2('val', fv);
+                            try{
+                                $f.select2('val', _.isString(fv)?[fv]:fv);
+                            }catch(e){
+                                console.error('error with select2');
+                                return '';
+                            }
                             break;
                         case fts.formula:
                             $f.html(f.formula?f.formula(model):'');
@@ -283,6 +290,9 @@ return Backbone.View.extend({
                     return fv;
                 }
                 return obj;
+            }else if(f.type===fts.date){
+                var v=eDico.getFieldVal(f, this.$field(f.id));
+                return v.length===10?v+'T08:00:00.000Z':v;
             }else{
                 return eDico.getFieldVal(f, this.$field(f.id));
             }
@@ -628,20 +638,26 @@ return Backbone.View.extend({
 
     _renderPanelList: function (h, p, mode) {
         var isEditable = p.readonly?false:(mode!=='browse'),
-            vMode=isEditable?mode:'browse';
+            vMode=isEditable?mode:'browse',
+            fts=eDef.fieldTypes;
 
         h.push('<div style="width:'+p.width+'%" class="evol-pnl" data-pid="'+p.id+'">',
             dom.panelBegin(p, this.style, true),
-            '<table class="table" data-mid="'+(p.attribute || p.id)+'"><thead><tr>');
+            '<div class="evo-plist"><table class="table" data-mid="'+(p.attribute || p.id)+'"><thead><tr>');
         _.each(p.elements, function (elem) {
-            h.push('<th>'+elem.label+((isEditable && elem.required)?dom.html.required:'')+'</th>');
+            if(elem.type===fts.pix){
+                h.push('<th class="evo-col-pix">');
+            }else{
+                h.push('<th>');
+            }
+            h.push(elem.label+((isEditable && elem.required)?dom.html.required:'')+'</th>');
         });
         if(vMode==='edit'){
             h.push('<th></th>');
         }
         h.push('</tr></thead><tbody>');
         this._renderPanelListBody(h, p, null, vMode);
-        h.push('</tbody></table>',
+        h.push('</tbody></table></div>',
             dom.panelEnd(),
             '</div>');
         return this;
@@ -711,11 +727,15 @@ return Backbone.View.extend({
             fv = (mode !== 'new') ? this.model.get(f.id) : f.defaultValue || '';
         }
         if(f.type===fts.formula){
-            h.push(Evol.Dico.HTMLFieldLabel(f, mode || 'edit')+
-                dom.input.formula(this.fieldViewId(f.id), f, this.model));
-        }else if(f.type===fts.json && mode==='browse'){
-            h.push(Evol.Dico.HTMLFieldLabel(f, mode)+
-                dom.input.textM(this.fieldViewId(f.id), Evol.Format.jsonString(fv, false), f.maxLen, f.height, true));
+            if(!skipLabel){
+                h.push(Evol.Dico.HTMLFieldLabel(f, mode || 'edit'));
+            }
+            h.push(dom.input.formula(this.fieldViewId(f.id), f, this.model));
+        }else if(f.type===fts.json && (mode==='browse' || f.readOnly)){
+            if(!skipLabel){
+                h.push(Evol.Dico.HTMLFieldLabel(f, mode));
+            }
+            h.push(dom.input.textM(this.fieldViewId(f.id), Evol.Format.jsonString(fv, false), f.maxLen, f.height, true));
         }else{
             h.push(eDico.fieldHTML(f, this.fieldViewId(f.id), fv, mode, iconsPath, skipLabel));
         }
@@ -737,7 +757,11 @@ return Backbone.View.extend({
     setTitle: function (title){
         var bdg=this.uiModel.fnBadge;
         if(bdg){
-            bdg=bdg(this.model);
+            if(_.isString(bdg)){
+                bdg=this.model.escape(bdg)||'';
+            }else{
+                bdg=bdg(this.model);
+            }
         }
         return eDico.setViewTitle(this, title, bdg);
     },
@@ -761,7 +785,7 @@ return Backbone.View.extend({
                     scInvalid = 0;
                 _.each(scData, function(rowData, idx){
                     _.each(sc.elements, function(f){
-                        if(that.validateField(f, rowData[f.id])){
+                        if(that.validateField(f, f.type==='date' ? rowData[f.id].substring(0,10) : rowData[f.id])){
                             trs.eq(idx).find('#'+f.id).parent().addClass('has-error');
                             scInvalid++;
                         }
@@ -838,7 +862,7 @@ return Backbone.View.extend({
             if (f.required && (v==='' ||
                     (numberField && isNaN(v)) ||
                     (f.type===fts.lov && v==='0') ||
-                    (f.type===fts.list && v.length===0) //||
+                    (f.type===fts.list && v && v.length===0) //||
                     //(f.type===fts.color && v==='#000000')
                 )){
                 return formatMsg(f.label, i18nVal.empty);

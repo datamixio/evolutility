@@ -9,9 +9,12 @@ uiModels.comics = {
     fnTitle: 'title',
     fnSearch: ['title', 'authors', 'notes'],
     fnBadge: function(m){
-        var hNb=m.get('haveNb'),
-            sNb=m.get('serieNb');
-        return (hNb==sNb)?hNb:hNb+'/'+sNb;
+        if(m){
+            var hNb=m.get('have_nb'),
+                sNb=m.get('serie_nb');
+            return (hNb==sNb)?hNb:(hNb||'-')+'/'+(sNb||'-');
+        }
+        return '';
     },
     elements: [
         {
@@ -52,11 +55,11 @@ uiModels.comics = {
                     ]
                 },
                 {
-                    id: 'serieNb', attribute: 'serieNb', type: 'integer', width: 15, inMany: false,
+                    id: 'serie_nb', attribute: 'serie_nb', type: 'integer', width: 15, inMany: false,
                     label: 'Albums', inCharts:false 
                 },
                 {
-                    id: 'haveNb', attribute: 'haveNb', type: 'integer', width: 15, inMany: false,
+                    id: 'have_nb', attribute: 'have_nb', type: 'integer', width: 15, inMany: false,
                     label: 'Owned', inCharts:false 
                 },
                 {
@@ -69,7 +72,7 @@ uiModels.comics = {
                 },
                 {
                     id: 'finished', attribute: 'finished', type: 'boolean', width: 19, inMany: true,
-                    label: 'Finished', labelTrue:'Finished', labelFalse:'Unfinished', css:'cBlue'
+                    label: 'Finished', labelTrue:'Finished', labelFalse:'Not finished', css:'cBlue'
                 },
                 {
                     id:'amazon', label:'Amazon', type:'formula', width:62, css:'evol-ellipsis',

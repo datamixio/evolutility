@@ -23,7 +23,7 @@
 <body>
 
 <div class="evo-header">
-    <div class="evo-logo"><a href="../index.html"><span>evol</span>utility<span>.js</span></a></div>
+    <div class="evo-logo"><a href="../index.html"><span>evol</span>utility</a></div>
     <ul class="evo-head-links">
         <li><a href="index.html">demo</a></li>
         <li><a href="../doc/index.html">doc</a></li>
@@ -60,12 +60,14 @@
         // - run App
         new Evol.App({
             el:$('#evol'),
-            uiModels: [uiModels.test]
+            uiModels: [uiModels.test],
+            style: 'panel-info',
+            pageSize: 20
         }).render();
     });
 
 </script>
-<div class="footer">&#169; 2015 Olivier Giulieri</div>
+<div class="footer">&#169; 2016 Olivier Giulieri</div>
 </body>
 
 </html>

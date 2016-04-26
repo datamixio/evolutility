@@ -5,13 +5,15 @@
  * View "many cards" to show a collection as many cards.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.Cards = Evol.View_Many.extend({
 
     viewName: 'cards',
+    // TODO icon should be different than view Mini
+    icon: 'th-large', // glyphicon-th-large
 
     events: _.extend({
         'mouseenter .evol-cards-body>div': 'enterItem',
@@ -61,6 +63,8 @@ Evol.ViewMany.Cards = Evol.View_Many.extend({
                 v = '<a href="#'+route+model.id+'">'+
                     that._HTMLField(f, model.escape(f.attribute || f.id))+
                     '</a>';
+            }else if(f.type===fts.json){
+                v = model.get(f.attribute || f.id);
             }else{
                 v = that._HTMLField(f, model.escape(f.attribute || f.id));
             }

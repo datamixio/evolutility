@@ -5,7 +5,7 @@
  * Helpers for string manipulation and date formats
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -27,7 +27,7 @@ Evol.Format = {
         return '';
     },
     cr2br: function(v, escape){
-        if(v==='' || v===null){
+        if(v==='' || v===null || _.isUndefined(v)){
             return '';
         }
         var txt=escape?_.escape(v):v;
@@ -73,7 +73,13 @@ Evol.Format = {
 
     // --- JSON formats ---
     jsonString: function(d, cr2br){
-        var dd = (_.isString(d) && d!=='') ? $.parseJSON(d) : d;
+        var dd;
+        try{
+            dd=(_.isString(d) && d!=='') ? $.parseJSON(_.unescape(d)) : d;
+        }catch(err){
+            alert('Error: format.jsonString'+ err);
+            dd={"error": "Evol.Format.jsonString"};
+        }
         if(dd===''){
             return  dd;
         }else{

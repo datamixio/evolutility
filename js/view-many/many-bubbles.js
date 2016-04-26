@@ -5,13 +5,14 @@
  * View "many bubbles" to show a Bubble Chart of a collection of many models.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
 Evol.ViewMany.Bubbles = Evol.View_Many.extend({
 
     viewName: 'bubbles',
+    icon: 'adjust', // glyphicon-adjust
 
     events: {
         //'click .evol-buttons>button': 'click_button',
@@ -46,7 +47,7 @@ Evol.ViewMany.Bubbles = Evol.View_Many.extend({
                 uiModel: this.uiModel,
                 tooltip: function(d){
                     var h=[],
-                    flds=that.getFields();//(h, fields, model, icon, selectable, route, isTooltip)
+                    flds=that.getFields();
                     Evol.ViewMany.Cards.prototype.HTMLItem.call(that, h, flds, new Backbone.Model(d), null, null, null, true);
                     return h.join('');
                 }

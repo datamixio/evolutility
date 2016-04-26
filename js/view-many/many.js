@@ -5,7 +5,7 @@
  * View "many" for other ViewMany views to inherit from.
  *
  * https://github.com/evoluteur/evolutility
- * Copyright (c) 2015, Olivier Giulieri
+ * Copyright (c) 2016 Olivier Giulieri
  *
  *************************************************************************** */
 
@@ -119,8 +119,8 @@ return Backbone.View.extend({
     },
 
     render: function () {
-        var models = this.collection.models;
-        if (this.collection.length) {
+        var models = this.collection ? this.collection.models : null;
+        if (this.collection && this.collection.length) {
             models = eDico.filterModels(models, this._filter);
             this._render(models);
         } else {
@@ -195,8 +195,8 @@ return Backbone.View.extend({
         return this._filter;
     },
 
-    setTitle: function () {
-        return eDico.setViewTitle(this);
+    setTitle: function (title){
+        return eDico.setViewTitle(this, title||this.getTitle());
     },
 
     getTitle: function () {
